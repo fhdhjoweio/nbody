@@ -1,7 +1,5 @@
 use macroquad::prelude::*;
-use sim::{Particle, System};
-
-mod sim;
+use nbody::sim::{Particle, System};
 
 fn window_conf() -> Conf {
     Conf {
@@ -23,12 +21,12 @@ async fn main() {
         //Particle::new(vec![-6.3781e6], vec![0.0], 5.9722e24),
         // particle at surface
         //Particle::new(vec![700.0], vec![0.0], 10.0),
-        Particle::new(vec![200.0], vec![0.0], 1.0e15),
-        Particle::new(vec![300.0], vec![0.0], 1.0e15),
+        Particle::new(vec![200.0], vec![0.0], 1.0e10),
+        Particle::new(vec![300.0], vec![0.0], 1.0e10),
     ]);
     loop {
         clear_background(BLACK);
-        system.tick(get_frame_time() as f64);
+        system.tick(get_frame_time() as f64 * 1000.0);
         draw_fps();
         for particle in &system.particles {
             let x = (particle.r[0] * system.zoom).round();
