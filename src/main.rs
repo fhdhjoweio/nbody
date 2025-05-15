@@ -17,23 +17,32 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut system = System::new(vec![
-        // mass of earth
-        //Particle::new(vec![-6.3781e6], vec![0.0], 5.9722e24),
-        // particle at surface
-        //Particle::new(vec![700.0], vec![0.0], 10.0),
-        Particle::new(vec![200.0], vec![0.0], 1.0e10),
-        Particle::new(vec![300.0], vec![0.0], 1.0e10),
+        // earth
+        Particle::new(vec![-6.3781e6, 100.0], vec![0.0, 0.0], 5.9722e24),
+        // particles at surface
+        Particle::new(vec![200.0, 50.0], vec![0.0, 0.0], 10.0),
+        Particle::new(vec![200.0, 100.0], vec![0.0, 10.0], 10.0),
+        Particle::new(vec![200.0, 200.0], vec![0.0, 0.0], 10.0),
+        //Particle::new(vec![400.0], vec![0.0], 1.0e10),
+        //Particle::new(vec![800.0], vec![0.0], 1.0e10),
     ]);
     loop {
         clear_background(BLACK);
-        system.tick(get_frame_time() as f64 * 1000.0);
+        system.tick(get_frame_time() as f64);
         draw_fps();
         for particle in &system.particles {
-            let x = (particle.r[0] * system.zoom).round();
-            if x > 0.0 && x < screen_width().into() {
-                draw_circle(x as f32, screen_height() / 2.0, 15.0, WHITE);
+            let x = (particle.r[0] * system.zoom).round() as f32;
+            let y = if particle.r.len() > 1 {
+                (particle.r[1] * system.zoom).round() as f32;
+                50.0
+            } else {
+                screen_height() / 2.0
+            };
+            if x > 0.0 && x < screen_width().into() && y > 0.0 && y < screen_height().into() {
+                draw_circle(x, y, 5.0, WHITE);
             }
         }
+        println!("{:?}", system.particles);
         next_frame().await;
     }
 }
