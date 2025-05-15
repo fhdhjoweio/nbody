@@ -1,71 +1,41 @@
-const TIME_STEP: f64 = 0.001;
-const GRAVITATIONAL_CONSTANT: f64 = 6.6743e-11;
-#[derive(Debug, Clone)]
-struct Particle {
-    // n-dimensional vector (units: meters)
-    r: Vec<f64>,
-    // n-dimensional vector (units: meters/seconds)
-    v: Vec<f64>,
-    // scalar (units: kg)
-    m: f64,
-}
+use macroquad::prelude::*;
+use sim::{Particle, System};
 
-impl Particle {
-    fn new(r: Vec<f64>, v: Vec<f64>, m: f64) -> Particle {
-        assert!(r.len() == v.len());
-        Particle { r, v, m }
-    }
-}
-#[derive(Debug, Clone)]
+mod sim;
 
-struct System {
-    particles: Vec<Particle>,
-}
-
-impl System {
-    fn new(particles: Vec<Particle>) -> Self {
-        Self { particles }
-    }
-    fn tick(&mut self, time_step: f64) {
-        for i in 0..self.particles.len() {
-            let ag = self.gravitational_accel(i);
-            let p = &mut self.particles[i];
-            for d in 0..p.r.len() {
-                p.r[d] += p.v[d] * time_step;
-                p.v[d] += ag[d] * time_step;
-            }
-        }
-    }
-    fn gravitational_accel(&self, i: usize) -> Vec<f64> {
-        let mut a: Vec<f64> = vec![0.0; 2];
-        for (c, p) in self.particles.iter().enumerate() {
-            if c == i {
-                continue;
-            }
-            for d in 0..(p.r.len()) {
-                // (G*M*m)/r^2
-                let dist = p.r[d] - self.particles[i].r[d];
-                if dist.abs() < 0.001 {
-                    continue;
-                }
-                a[d] += dist.signum() * (GRAVITATIONAL_CONSTANT * p.m) / (dist.powi(2));
-            }
-        }
-        a
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "nbody".to_owned(),
+        window_height: 500,
+        window_width: 500,
+        platform: miniquad::conf::Platform {
+            linux_backend: miniquad::conf::LinuxBackend::WaylandOnly,
+            ..Default::default()
+        },
+        ..Default::default()
     }
 }
 
-fn main() {
+#[macroquad::main(window_conf)]
+async fn main() {
     let mut system = System::new(vec![
         // mass of earth
-        Particle::new(vec![0.0], vec![0.0], 5.9722e24),
+        //Particle::new(vec![-6.3781e6], vec![0.0], 5.9722e24),
         // particle at surface
-        Particle::new(vec![6.3781e6], vec![0.0], 10.0),
+        //Particle::new(vec![700.0], vec![0.0], 10.0),
+        Particle::new(vec![200.0], vec![0.0], 1.0e15),
+        Particle::new(vec![300.0], vec![0.0], 1.0e15),
     ]);
-    let mut t = 1.0;
-    while t > 0.0 {
-        system.tick(TIME_STEP);
-        t -= TIME_STEP;
+    loop {
+        clear_background(BLACK);
+        system.tick(get_frame_time() as f64);
+        draw_fps();
+        for particle in &system.particles {
+            let x = (particle.r[0] * system.zoom).round();
+            if x > 0.0 && x < screen_width().into() {
+                draw_circle(x as f32, screen_height() / 2.0, 15.0, WHITE);
+            }
+        }
+        next_frame().await;
     }
-    println!("{:?}", system);
 }
