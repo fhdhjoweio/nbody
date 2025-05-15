@@ -45,6 +45,9 @@ impl System {
             for d in 0..(p.r.len()) {
                 // (G*M*m)/r^2
                 let dist = p.r[d] - self.particles[i].r[d];
+                if dist.abs() < 0.001 {
+                    continue;
+                }
                 a[d] += dist.signum() * (GRAVITATIONAL_CONSTANT * p.m) / (dist.powi(2));
             }
         }
