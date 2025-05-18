@@ -17,14 +17,11 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut system = System::<2>::new(vec![
-        // earth
-        Particle::new(vec![-6.3781e6, 100.0], vec![0.0, 0.0], 5.9722e24),
-        // particles at surface
-        Particle::new(vec![200.0, 50.0], vec![0.0, 0.0], 10.0),
-        Particle::new(vec![200.0, 100.0], vec![0.0, 10.0], 10.0),
-        Particle::new(vec![200.0, 200.0], vec![0.0, 0.0], 10.0),
-        //Particle::new(vec![400.0], vec![0.0], 1.0e10),
-        //Particle::new(vec![800.0], vec![0.0], 1.0e10),
+        // Particle::new(vec![-6.3781e6, 100.0], vec![0.0, 0.0], 5.9722e24),
+        Particle::new(vec![0.0, 0.0], vec![0.0, 0.0], 2.0e16),
+        Particle::new(vec![0.0, 100.0], vec![50.0, -100.0], 10.0),
+        Particle::new(vec![200.0, 0.0], vec![0.0, 81.70], 10.0),
+        Particle::new(vec![0.0, 75.0], vec![133.41, 0.0], 10.0),
     ]);
     loop {
         clear_background(BLACK);
@@ -40,11 +37,15 @@ async fn main() {
             } else {
                 screen_height() / 2.0
             };
-            if x > 0.0 && x < screen_width() && y > 0.0 && y < screen_height() {
-                draw_circle(x, y, 5.0, WHITE);
+            if x.abs() < screen_width() / 2.0 && y.abs() < screen_height() / 2.0 {
+                draw_circle(
+                    screen_width() / 2.0 + x,
+                    screen_height() / 2.0 - y,
+                    5.0,
+                    WHITE,
+                );
             }
         }
-        println!("{:?}", system.particles);
         next_frame().await;
     }
 }
