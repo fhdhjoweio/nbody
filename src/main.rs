@@ -26,8 +26,8 @@ async fn main() {
     loop {
         clear_background(BLACK);
         let frame_time = get_frame_time();
-        for _ in 0..1000 {
-            system.tick(frame_time as f64 / 1000.0);
+        for _ in 0..100 * 10 {
+            system.tick(frame_time as f64 / 100.0);
         }
         draw_fps();
         for particle in &system.particles {
