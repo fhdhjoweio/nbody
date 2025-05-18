@@ -1,8 +1,9 @@
 use nbody::sim::{Particle, System};
 
-const TRIALS: u32 = 30;
+const TOTAL_TIME: f64 = 100_000_000.0;
+const TRIALS: u32 = 500;
 const D: usize = 2;
-fn bench(n: usize) -> u128 {
+fn bench(n: usize) -> (u128, f64) {
     let mut parts = Vec::new();
     for i in 0..n {
         let mut v = Vec::new();
@@ -14,17 +15,24 @@ fn bench(n: usize) -> u128 {
         parts.push(Particle::new(r, v, 1.0e10));
     }
     let mut sys = System::<D>::new(parts);
+    let initial_energy = sys.total_energy();
     let start = std::time::Instant::now();
     for _ in 0..TRIALS {
-        sys.tick(0.1);
+        sys.tick(TOTAL_TIME / TRIALS as f64);
     }
     let end = std::time::Instant::now();
     let avg_time = (end - start) / TRIALS;
-    avg_time.as_nanos()
+    let final_energy = sys.total_energy();
+    let energy_error = (initial_energy - final_energy) / initial_energy;
+    (avg_time.as_nanos(), energy_error)
 }
 fn main() {
-    println!("|bodies    |tick (ns) |");
-    for n in [1, 5, 100, 1000, 10_000] {
-        println!("|{: <10}|{: <10}|", n, bench(n));
+    println!("|bodies    |tick (ns) |energy err|");
+    for n in [1, 5, 100, 1000] {
+        let (average_tick_time, energy_error) = bench(n);
+        println!(
+            "|{: <10}|{: <10}|{: <10.4e}|",
+            n, average_tick_time, energy_error
+        );
     }
 }

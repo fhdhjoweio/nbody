@@ -50,7 +50,7 @@ impl<const D: usize> System<D> {
             }
         }
     }
-    pub fn gravitational_accel(&self, i: usize) -> SVector<f64, D> {
+    fn gravitational_accel(&self, i: usize) -> SVector<f64, D> {
         let mut a: SVector<f64, D> = SVector::zeros();
         for (c, p) in self.particles.iter().enumerate() {
             if c == i {
@@ -64,5 +64,16 @@ impl<const D: usize> System<D> {
             a += (dist * GRAVITATIONAL_CONSTANT * p.m) / (dist.norm().powi(3))
         }
         a
+    }
+    pub fn total_energy(&self) -> f64 {
+        let mut e = 0.0;
+        for i in 0..self.particles.len() {
+            e += 0.5 * self.particles[i].m * self.particles[i].v.norm_squared();
+            for j in i + 1..self.particles.len() {
+                e -= GRAVITATIONAL_CONSTANT * self.particles[i].m * self.particles[j].m
+                    / (self.particles[i].r - self.particles[j].r).norm();
+            }
+        }
+        e
     }
 }
