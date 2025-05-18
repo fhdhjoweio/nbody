@@ -45,8 +45,8 @@ impl<const D: usize> System<D> {
             let ag = self.gravitational_accel(i);
             let p = &mut self.particles[i];
             for d in 0..p.r.len() {
-                p.r[d] += p.v[d] * time_step;
                 p.v[d] += ag[d] * time_step;
+                p.r[d] += p.v[d] * time_step;
             }
         }
     }
