@@ -1,24 +1,29 @@
 use nbody::sim::{Particle, System};
 
-const TRIALS: u32 = 10000;
-fn main() {
-    let parts = vec![
-        Particle::new(vec![100.0], vec![0.0], 1.0e10),
-        Particle::new(vec![200.0], vec![0.0], 1.0e10),
-        Particle::new(vec![300.0], vec![0.0], 1.0e10),
-        Particle::new(vec![400.0], vec![0.0], 1.0e10),
-        Particle::new(vec![500.0], vec![0.0], 1.0e10),
-    ];
-    let mut sys = System::new(parts.clone());
+const TRIALS: u32 = 30;
+fn bench(n: usize, d: usize) -> u128 {
+    let mut parts = Vec::new();
+    for i in 0..n {
+        let mut v = Vec::new();
+        let mut r = Vec::new();
+        for _ in 0..d {
+            v.push(0.0);
+            r.push(i as f64 * 100.0);
+        }
+        parts.push(Particle::new(r, v, 1.0e10));
+    }
+    let mut sys = System::new(parts);
     let start = std::time::Instant::now();
     for _ in 0..TRIALS {
         sys.tick(0.1);
     }
     let end = std::time::Instant::now();
     let avg_time = (end - start) / TRIALS;
-    println!(
-        "Average tick for {} bodies: {} ns",
-        parts.len(),
-        avg_time.as_nanos()
-    );
+    avg_time.as_nanos()
+}
+fn main() {
+    println!("|bodies    |dimensions|tick (ns) |");
+    for n in [1, 5, 100, 1000, 10_000] {
+        println!("|{: <10}|{: <10}|{: <10}|", n, 2, bench(n, 2));
+    }
 }
