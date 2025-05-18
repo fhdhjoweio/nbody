@@ -28,7 +28,10 @@ async fn main() {
     ]);
     loop {
         clear_background(BLACK);
-        system.tick(get_frame_time() as f64);
+        let frame_time = get_frame_time();
+        for _ in 0..1000 {
+            system.tick(frame_time as f64 / 1000.0);
+        }
         draw_fps();
         for particle in &system.particles {
             let x = (particle.r[0] * system.zoom).round() as f32;
