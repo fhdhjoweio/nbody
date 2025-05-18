@@ -6,3 +6,4 @@ default-run = "nbody"
 
 [dependencies]
 macroquad = "0.4"
+nalgebra = "0.33"

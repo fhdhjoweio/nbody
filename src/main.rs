@@ -16,7 +16,7 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut system = System::new(vec![
+    let mut system = System::<2>::new(vec![
         // earth
         Particle::new(vec![-6.3781e6, 100.0], vec![0.0, 0.0], 5.9722e24),
         // particles at surface
@@ -34,14 +34,13 @@ async fn main() {
         }
         draw_fps();
         for particle in &system.particles {
-            let x = (particle.r[0] * system.zoom).round() as f32;
+            let x = (particle.r.x * system.zoom) as f32;
             let y = if particle.r.len() > 1 {
-                (particle.r[1] * system.zoom).round() as f32;
-                50.0
+                (particle.r.y * system.zoom) as f32
             } else {
                 screen_height() / 2.0
             };
-            if x > 0.0 && x < screen_width().into() && y > 0.0 && y < screen_height().into() {
+            if x > 0.0 && x < screen_width() && y > 0.0 && y < screen_height() {
                 draw_circle(x, y, 5.0, WHITE);
             }
         }
