@@ -16,7 +16,7 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut system = System::<2>::new(vec![
+    let mut system = System::<2>::from_particles(vec![
         // Particle::new(vec![-6.3781e6, 100.0], vec![0.0, 0.0], 5.9722e24),
         Particle::new(vec![0.0, 0.0], vec![0.0, 0.0], 2.0e16),
         Particle::new(vec![0.0, 100.0], vec![50.0, -100.0], 10.0),
@@ -27,13 +27,13 @@ async fn main() {
         clear_background(BLACK);
         let frame_time = get_frame_time();
         for _ in 0..100 * 10 {
-            system.tick(frame_time as f64 / 100.0);
+            system.runge_kutta(frame_time as f64 / 100.0);
         }
         draw_fps();
-        for particle in &system.particles {
-            let x = (particle.r.x * system.zoom) as f32;
-            let y = if particle.r.len() > 1 {
-                (particle.r.y * system.zoom) as f32
+        for i in 0..system.x.nrows() {
+            let x = (system.x.row(i)[0] * system.zoom) as f32;
+            let y = if system.x.ncols() >= 2 {
+                (system.x.row(i)[1] * system.zoom) as f32
             } else {
                 screen_height() / 2.0
             };

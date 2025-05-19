@@ -5,9 +5,9 @@ const GRAVITATIONAL_CONSTANT: f64 = 6.6743e-11;
 #[derive(Debug, Clone)]
 pub struct Particle<const D: usize> {
     // n-dimensional vector (units: meters)
-    pub r: na::SVector<f64, D>,
+    pub x: na::RowSVector<f64, D>,
     // n-dimensional vector (units: meters/seconds)
-    pub v: na::SVector<f64, D>,
+    pub v: na::RowSVector<f64, D>,
     // scalar (units: kg)
     m: f64,
 }
@@ -16,8 +16,8 @@ impl<const D: usize> Particle<D> {
     pub fn new(r: Vec<f64>, v: Vec<f64>, m: f64) -> Particle<D> {
         assert!(r.len() == v.len());
         Particle {
-            r: na::SVector::from_vec(r),
-            v: na::SVector::from_vec(v),
+            x: na::RowSVector::from_vec(r),
+            v: na::RowSVector::from_vec(v),
             m,
         }
     }
@@ -25,87 +25,97 @@ impl<const D: usize> Particle<D> {
 
 #[derive(Debug, Clone)]
 pub struct System<const D: usize> {
-    pub particles: Vec<Particle<D>>,
+    pub x: na::OMatrix<f64, na::Dyn, na::Const<D>>,
+    pub v: na::OMatrix<f64, na::Dyn, na::Const<D>>,
+    pub m: Vec<f64>,
     // units: pixels/meter
     pub zoom: f64,
 }
 
 impl<const D: usize> System<D> {
-    pub fn new(particles: Vec<Particle<D>>) -> Self {
-        Self {
-            particles,
-            zoom: 1.0,
+    pub fn from_particles(particles: Vec<Particle<D>>) -> Self {
+        let mut x = na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(particles.len());
+        let mut v = na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(particles.len());
+        let mut m = Vec::new();
+        // for i in 0..particles.len() {
+        for (i, p) in particles.iter().enumerate() {
+            x.set_row(i, &p.x);
+            v.set_row(i, &p.v);
+            m.push(p.m);
         }
+        Self { x, v, m, zoom: 1.0 }
     }
-    fn runge_kutta(&mut self, time_step: f64) {
+    pub fn new(
+        x: na::OMatrix<f64, na::Dyn, na::Const<D>>,
+        v: nalgebra::OMatrix<f64, na::Dyn, na::Const<D>>,
+        m: Vec<f64>,
+    ) -> Self {
+        Self { x, v, m, zoom: 1.0 }
+    }
+    pub fn runge_kutta(&mut self, time_step: f64) {
         const NUM_STAGES: usize = 4;
         const COEFFECIENTS: [f64; 3] = [0.5, 0.5, 1.0];
         const WEIGHTS: [f64; 4] = [1.0 / 6.0, 2.0 / 6.0, 2.0 / 6.0, 1.0 / 6.0];
-        for i in 0..self.particles.len() {
-            let x_initial = self.particles[i].r;
-            let v_initial = self.particles[i].v;
+        let x_initial = self.x.clone();
+        let v_initial = self.v.clone();
+        let mut xk =
+            vec![na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(self.x.len()); NUM_STAGES];
+        let mut vk =
+            vec![na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(self.x.len()); NUM_STAGES];
 
-            let mut xk = [na::SVector::<f64, D>::zeros(); NUM_STAGES];
-            let mut vk = [na::SVector::<f64, D>::zeros(); NUM_STAGES];
+        xk[0] = v_initial.clone();
+        vk[0] = self.gravitational_accel();
 
-            xk[0] = v_initial;
-            vk[0] = self.gravitational_accel(i);
+        for stage in 1..NUM_STAGES {
+            self.x =
+                x_initial.clone() + time_step * COEFFECIENTS[stage - 1] * xk[stage - 1].clone();
+            let a = self.gravitational_accel();
 
-            for stage in 1..NUM_STAGES {
-                self.particles[i].r =
-                    x_initial + time_step * COEFFECIENTS[stage - 1] * xk[stage - 1];
-                let a = self.gravitational_accel(i);
-
-                xk[stage] = v_initial + time_step * COEFFECIENTS[stage - 1] * vk[stage - 1];
-                vk[stage] = a;
-            }
-
-            let mut x_delta = na::SVector::<f64, D>::zeros();
-            let mut v_delta = na::SVector::<f64, D>::zeros();
-            for stage in 0..NUM_STAGES {
-                x_delta += WEIGHTS[stage] * xk[stage];
-                v_delta += WEIGHTS[stage] * vk[stage];
-            }
-            self.particles[i].r = x_initial + time_step * x_delta;
-            self.particles[i].v = v_initial + time_step * v_delta;
+            xk[stage] =
+                v_initial.clone() + time_step * COEFFECIENTS[stage - 1] * vk[stage - 1].clone();
+            vk[stage] = a;
         }
-    }
-    #[allow(dead_code)]
-    fn euler(&mut self, time_step: f64) {
-        for i in 0..self.particles.len() {
-            let ag = self.gravitational_accel(i);
-            let p = &mut self.particles[i];
-            for d in 0..p.r.len() {
-                p.v[d] += ag[d] * time_step;
-                p.r[d] += p.v[d] * time_step;
-            }
+
+        let mut x_delta = na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(x_initial.nrows());
+        let mut v_delta = na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(x_initial.nrows());
+        for stage in 0..NUM_STAGES {
+            x_delta += WEIGHTS[stage] * xk[stage].clone();
+            v_delta += WEIGHTS[stage] * vk[stage].clone();
         }
+        self.x = x_initial + time_step * x_delta;
+        self.v = v_initial + time_step * v_delta;
     }
-    pub fn tick(&mut self, time_step: f64) {
-        self.runge_kutta(time_step);
+    pub fn euler(&mut self, time_step: f64) {
+        let ag = self.gravitational_accel();
+        self.v += ag * time_step;
+        self.x += self.v.clone() * time_step;
     }
-    fn gravitational_accel(&self, i: usize) -> na::SVector<f64, D> {
-        let mut a: na::SVector<f64, D> = na::SVector::zeros();
-        for (c, p) in self.particles.iter().enumerate() {
-            if c == i {
-                continue;
+    fn gravitational_accel(&self) -> na::OMatrix<f64, na::Dyn, na::Const<D>> {
+        let mut a = na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(self.x.nrows());
+        for current_index in 0..self.x.nrows() {
+            for other_index in 0..self.x.nrows() {
+                if other_index == current_index {
+                    continue;
+                }
+                // (G*M*m)/r^2
+                let distance = self.x.row(other_index) - self.x.row(current_index);
+                let current_accel = a.row(current_index)
+                    + distance * GRAVITATIONAL_CONSTANT * self.m[other_index]
+                        / distance.norm().powi(3);
+                a.set_row(current_index, &current_accel)
             }
-            // (G*M*m)/r^2
-            let dist = p.r - self.particles[i].r;
-            if dist.norm() < 0.001 {
-                continue;
-            }
-            a += (dist * GRAVITATIONAL_CONSTANT * p.m) / (dist.norm().powi(3))
         }
         a
     }
     pub fn total_energy(&self) -> f64 {
         let mut e = 0.0;
-        for i in 0..self.particles.len() {
-            e += 0.5 * self.particles[i].m * self.particles[i].v.norm_squared();
-            for j in i + 1..self.particles.len() {
-                e -= GRAVITATIONAL_CONSTANT * self.particles[i].m * self.particles[j].m
-                    / (self.particles[i].r - self.particles[j].r).norm();
+        //   println!("{}", self.x);
+        for i in 0..self.x.nrows() {
+            let m = self.m[i];
+            e += 0.5 * m * self.v.row(i).norm_squared();
+            for j in i + 1..self.x.nrows() {
+                e -=
+                    GRAVITATIONAL_CONSTANT * m * self.m[j] / (self.x.row(i) - self.x.row(j)).norm();
             }
         }
         e

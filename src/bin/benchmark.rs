@@ -14,11 +14,11 @@ fn bench(n: usize) -> (u128, f64) {
         }
         parts.push(Particle::new(r, v, 1.0e10));
     }
-    let mut sys = System::<D>::new(parts);
+    let mut sys = System::<D>::from_particles(parts);
     let initial_energy = sys.total_energy();
     let start = std::time::Instant::now();
     for _ in 0..TRIALS {
-        sys.tick(TOTAL_TIME / TRIALS as f64);
+        sys.runge_kutta(TOTAL_TIME / TRIALS as f64);
     }
     let end = std::time::Instant::now();
     let avg_time = (end - start) / TRIALS;
