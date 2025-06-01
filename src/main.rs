@@ -57,13 +57,44 @@ async fn main() {
     ));
     let mut system =
         System::<3>::from_particles(particles.into_iter().map(|p| p.into_particle()).collect());
+    let mut speed_factor = 10.0;
     loop {
-        clear_background(BLACK);
         let frame_time = get_frame_time();
-        for _ in 0..100 * 10 {
-            system.runge_kutta(frame_time as f64 / 100.0);
+        if is_key_down(KeyCode::Q) {
+            speed_factor *= 1.1;
+        } else if is_key_down(KeyCode::A) {
+            speed_factor /= 1.1;
         }
-        draw_fps();
+        if is_key_down(KeyCode::W) {
+            system.zoom *= 1.1;
+        } else if is_key_down(KeyCode::S) {
+            system.zoom /= 1.1;
+        }
+        clear_background(BLACK);
+        draw_text(
+            &format!("Speed: {speed_factor:.1}X"),
+            10.0,
+            10.0,
+            20.0,
+            WHITE,
+        );
+        draw_text(
+            &format!("Frame Time: {:.2}", frame_time * 1000.0),
+            10.0,
+            24.0,
+            20.0,
+            WHITE,
+        );
+        draw_text(
+            &format!("1px={:.1e}m", 1.0 / system.zoom),
+            10.0,
+            38.0,
+            20.0,
+            WHITE,
+        );
+        for _ in 0..5000 {
+            system.runge_kutta(frame_time as f64 / 5000.0 * speed_factor);
+        }
         for i in 0..system.x.nrows() {
             let x = (system.x.row(i)[0] * system.zoom) as f32;
             let y = if system.x.ncols() >= 2 {
@@ -75,7 +106,7 @@ async fn main() {
                 draw_circle(
                     screen_width() / 2.0 + x,
                     screen_height() / 2.0 - y,
-                    5.0,
+                    2.0,
                     WHITE,
                 );
             }
