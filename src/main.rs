@@ -1,5 +1,39 @@
 use macroquad::prelude::*;
 use nbody::sim::{Particle, System};
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SerializedParticle<const D: usize> {
+    // n-dimensional vector (units: kilometers)
+    pub x: Vec<f64>,
+    // n-dimensional vector (units: kilometers/seconds)
+    pub v: Vec<f64>,
+    // scalar (units: kg)
+    pub m: f64,
+}
+
+impl<const D: usize> SerializedParticle<D> {
+    pub fn into_particle(self) -> Particle<D> {
+        if self.x.len() != D || self.v.len() != D {
+            panic!();
+        }
+        Particle::new(self.x, self.v, self.m)
+    }
+    pub fn load_from_path(p: &Path) -> Vec<Self> {
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(false)
+            .open(p)
+            .unwrap();
+        let mut o: Vec<SerializedParticle<D>> = serde_json::from_reader(file).unwrap();
+        for p in &mut o {
+            p.x = p.x.iter().map(|n| n * 1000.0).collect();
+            p.v = p.v.iter().map(|n| n * 1000.0).collect();
+        }
+        o
+    }
+}
 
 fn window_conf() -> Conf {
     Conf {
@@ -16,13 +50,13 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut system = System::<2>::from_particles(vec![
-        // Particle::new(vec![-6.3781e6, 100.0], vec![0.0, 0.0], 5.9722e24),
-        Particle::new(vec![0.0, 0.0], vec![0.0, 0.0], 2.0e16),
-        Particle::new(vec![0.0, 100.0], vec![50.0, -100.0], 10.0),
-        Particle::new(vec![200.0, 0.0], vec![0.0, 81.70], 10.0),
-        Particle::new(vec![0.0, 75.0], vec![133.41, 0.0], 10.0),
-    ]);
+    let particles = SerializedParticle::<3>::load_from_path(&PathBuf::from(
+        std::env::args()
+            .nth(1)
+            .unwrap_or("initial_conditions.json".to_string()),
+    ));
+    let mut system =
+        System::<3>::from_particles(particles.into_iter().map(|p| p.into_particle()).collect());
     loop {
         clear_background(BLACK);
         let frame_time = get_frame_time();

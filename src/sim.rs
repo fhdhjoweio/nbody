@@ -9,7 +9,7 @@ pub struct Particle<const D: usize> {
     // n-dimensional vector (units: meters/seconds)
     pub v: na::RowSVector<f64, D>,
     // scalar (units: kg)
-    m: f64,
+    pub m: f64,
 }
 
 impl<const D: usize> Particle<D> {
@@ -105,6 +105,7 @@ impl<const D: usize> System<D> {
                 a.set_row(current_index, &current_accel)
             }
         }
+        // print!("\r accel: {:.4e}", a.row(1).norm());
         a
     }
     pub fn total_energy(&self) -> f64 {
