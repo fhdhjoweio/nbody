@@ -58,6 +58,8 @@ async fn main() {
     let mut system =
         System::<3>::from_particles(particles.into_iter().map(|p| p.into_particle()).collect());
     let mut speed_factor = 10.0;
+    let mut center_x = 0.0;
+    let mut center_y = 0.0;
     loop {
         let frame_time = get_frame_time();
         if is_key_down(KeyCode::Q) {
@@ -69,6 +71,20 @@ async fn main() {
             system.zoom *= 1.1;
         } else if is_key_down(KeyCode::S) {
             system.zoom /= 1.1;
+        }
+        if is_key_down(KeyCode::Right) {
+            center_x += 10.0;
+        } else if is_key_down(KeyCode::Left) {
+            center_x -= 10.0;
+        }
+        if is_key_down(KeyCode::Up) {
+            center_y += 10.0;
+        } else if is_key_down(KeyCode::Down) {
+            center_y -= 10.0;
+        }
+        if is_key_down(KeyCode::C) {
+            center_x = 0.0;
+            center_y = 0.0;
         }
         clear_background(BLACK);
         draw_text(
@@ -96,12 +112,12 @@ async fn main() {
             system.runge_kutta(frame_time as f64 / 5000.0 * speed_factor);
         }
         for i in 0..system.x.nrows() {
-            let x = (system.x.row(i)[0] * system.zoom) as f32;
+            let x = (system.x.row(i)[0] * system.zoom) as f32 - center_x;
             let y = if system.x.ncols() >= 2 {
                 (system.x.row(i)[1] * system.zoom) as f32
             } else {
                 screen_height() / 2.0
-            };
+            } - center_y;
             if x.abs() < screen_width() / 2.0 && y.abs() < screen_height() / 2.0 {
                 draw_circle(
                     screen_width() / 2.0 + x,
