@@ -30,9 +30,6 @@ fn main() {
     println!("|bodies    |tick (ns) |energy err|");
     for n in [1, 5, 100, 1000] {
         let (average_tick_time, energy_error) = bench(n);
-        println!(
-            "|{: <10}|{: <10}|{: <10.4e}|",
-            n, average_tick_time, energy_error
-        );
+        println!("|{n: <10}|{average_tick_time: <10}|{energy_error: <10.4e}|");
     }
 }
