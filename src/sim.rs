@@ -1,4 +1,5 @@
 extern crate nalgebra as na;
+use rayon::prelude::*;
 
 const GRAVITATIONAL_CONSTANT: f64 = 6.6743e-11;
 
@@ -92,18 +93,30 @@ impl<const D: usize> System<D> {
     }
     fn gravitational_accel(&self) -> na::OMatrix<f64, na::Dyn, na::Const<D>> {
         let mut a = na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(self.x.nrows());
-        for current_index in 0..self.x.nrows() {
-            for other_index in 0..self.x.nrows() {
-                if other_index == current_index {
-                    continue;
-                }
-                // (G*M*m)/r^2
-                let distance = self.x.row(other_index) - self.x.row(current_index);
-                let current_accel = a.row(current_index)
-                    + distance * GRAVITATIONAL_CONSTANT * self.m[other_index]
-                        / distance.norm().powi(3);
-                a.set_row(current_index, &current_accel)
-            }
+        let backing = (0..self.x.nrows())
+            .into_par_iter()
+            .map(|current_index| {
+                self.x
+                    .row_iter()
+                    .zip(&self.m)
+                    .map(|(other_row_x, other_m)| {
+                        // The distance is 0 when both are the same object, so
+                        // return 0 early instead of causing NaN
+                        if other_row_x == self.x.row(current_index) {
+                            return na::SMatrix::<f64, 1, D>::zeros();
+                        }
+                        // There is a distance term on the top and bottom
+                        // because a naive norm_squared does not preserve
+                        // the direction of the vector
+                        // (G*M*m)/r^2
+                        let distance = other_row_x - self.x.row(current_index);
+                        distance * GRAVITATIONAL_CONSTANT * *other_m / distance.norm().powi(3)
+                    })
+                    .sum()
+            })
+            .collect::<Vec<na::SMatrix<f64, 1, D>>>();
+        for (i, r) in backing.iter().enumerate() {
+            a.set_row(i, r);
         }
         // print!("\r accel: {:.4e}", a.row(1).norm());
         a
