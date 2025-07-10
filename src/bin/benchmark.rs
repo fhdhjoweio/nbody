@@ -27,8 +27,14 @@ fn bench(n: usize) -> (u128, f64) {
     (avg_time.as_nanos(), energy_error)
 }
 fn main() {
+    let args = std::env::args();
+    let sizes = if args.len() == 1 {
+        [1, 5, 100, 1000].to_vec()
+    } else {
+        args.skip(1).map(|s| s.parse().unwrap()).collect()
+    };
     println!("|bodies    |tick (ns) |energy err|");
-    for n in [1, 5, 100, 1000] {
+    for n in sizes {
         let (average_tick_time, energy_error) = bench(n);
         println!("|{n: <10}|{average_tick_time: <10}|{energy_error: <10.4e}|");
     }
