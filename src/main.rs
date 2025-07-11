@@ -108,8 +108,8 @@ async fn main() {
             20.0,
             WHITE,
         );
-        for _ in 0..5000 {
-            system.runge_kutta(frame_time as f64 / 5000.0 * speed_factor);
+        for _ in 0..50 {
+            system.runge_kutta(frame_time as f64 / 300.0 * speed_factor);
         }
         for i in 0..system.x.nrows() {
             let x = (system.x.row(i)[0] * system.zoom) as f32 - center_x;
