@@ -60,7 +60,10 @@ impl<const D: usize> System<D> {
         let x_initial = self.x.clone();
         let v_initial = self.v.clone();
         let mut xk =
-            vec![na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(self.x.len()); NUM_STAGES];
+            vec![
+                unsafe { na::OMatrix::<f64, na::Dyn, na::Const<D>>::assume_init(self.x.len()) };
+                NUM_STAGES
+            ];
         let mut vk =
             vec![na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(self.x.len()); NUM_STAGES];
 
@@ -68,20 +71,16 @@ impl<const D: usize> System<D> {
         vk[0] = self.gravitational_accel();
 
         for stage in 1..NUM_STAGES {
-            self.x =
-                x_initial.clone() + time_step * COEFFECIENTS[stage - 1] * xk[stage - 1].clone();
-            let a = self.gravitational_accel();
-
-            xk[stage] =
-                v_initial.clone() + time_step * COEFFECIENTS[stage - 1] * vk[stage - 1].clone();
-            vk[stage] = a;
+            self.x = &x_initial + time_step * COEFFECIENTS[stage - 1] * &xk[stage - 1];
+            xk[stage] = &v_initial + time_step * COEFFECIENTS[stage - 1] * &vk[stage - 1];
+            vk[stage] = self.gravitational_accel();
         }
 
         let mut x_delta = na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(x_initial.nrows());
         let mut v_delta = na::OMatrix::<f64, na::Dyn, na::Const<D>>::zeros(x_initial.nrows());
         for stage in 0..NUM_STAGES {
-            x_delta += WEIGHTS[stage] * xk[stage].clone();
-            v_delta += WEIGHTS[stage] * vk[stage].clone();
+            x_delta += WEIGHTS[stage] * &xk[stage];
+            v_delta += WEIGHTS[stage] * &vk[stage];
         }
         self.x = x_initial + time_step * x_delta;
         self.v = v_initial + time_step * v_delta;
@@ -102,14 +101,15 @@ impl<const D: usize> System<D> {
                     .map(|(other_row_x, other_m)| {
                         // The distance is 0 when both are the same object, so
                         // return 0 early instead of causing NaN
-                        if other_row_x == self.x.row(current_index) {
+                        let current_row_x = self.x.row(current_index);
+                        if other_row_x == current_row_x {
                             return na::SMatrix::<f64, 1, D>::zeros();
                         }
                         // There is a distance term on the top and bottom
                         // because a naive norm_squared does not preserve
                         // the direction of the vector
                         // (G*M*m)/r^2
-                        let distance = other_row_x - self.x.row(current_index);
+                        let distance = other_row_x - current_row_x;
                         distance * GRAVITATIONAL_CONSTANT * *other_m / distance.norm().powi(3)
                     })
                     .sum()
